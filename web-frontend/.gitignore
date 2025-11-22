@@ -56,3 +56,6 @@ logs/
 .project
 .classpath
 
+# IDE settings
+.settings/
+jsconfig.json.local
