@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ChartPanel from "./ChartPanel";
+import "./SummaryView.css";
 
 function SummaryView() {
   const [datasets, setDatasets] = useState([]);
@@ -38,20 +39,15 @@ function SummaryView() {
   };
 
   return (
-    <div style={{ marginTop: 30 }}>
-      <h2>Uploaded Dataset History</h2>
+    <div className="summary-container">
+      <h2 className="summary-title">📊 Uploaded Dataset History</h2>
 
-      <div style={{ marginBottom: 10 }}>
+      <div className="auth-section">
         <input
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          style={{
-            padding: 6,
-            marginRight: 10,
-            borderRadius: 4,
-            border: "1px solid #ccc",
-          }}
+          className="auth-input"
         />
 
         <input
@@ -59,44 +55,32 @@ function SummaryView() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={{
-            padding: 6,
-            marginRight: 10,
-            borderRadius: 4,
-            border: "1px solid #ccc",
-          }}
+          className="auth-input"
         />
 
-        <button
-          onClick={fetchHistory}
-          style={{
-            padding: "6px 14px",
-            background: "#0057e7",
-            color: "#fff",
-            border: "none",
-            borderRadius: 4,
-            cursor: "pointer",
-          }}
-        >
-          Load History
+        <button onClick={fetchHistory} className="auth-button">
+          {loading ? "Loading..." : "Load History"}
         </button>
       </div>
 
-      {loading && <p>Loading datasets...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="error-message">❌ {error}</p>}
 
       {datasets.length === 0 && !loading && (
-        <p>No datasets found. Upload from Web or Desktop.</p>
+        <p className="no-data-message">
+          📁 No datasets found. Upload from Web or Desktop.
+        </p>
       )}
 
-      {datasets.map((ds) => (
-        <DatasetDisplay
-          key={ds.id}
-          ds={ds}
-          username={username}
-          password={password}
-        />
-      ))}
+      <div className="datasets-grid">
+        {datasets.map((ds) => (
+          <DatasetDisplay
+            key={ds.id}
+            ds={ds}
+            username={username}
+            password={password}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -104,6 +88,7 @@ function SummaryView() {
 function DatasetDisplay({ ds, username, password }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   // Fetch summary when component mounts
   useEffect(() => {
@@ -135,70 +120,101 @@ function DatasetDisplay({ ds, username, password }) {
   }, []); // only once when mounted
 
   return (
-    <div
-      style={{
-        border: "1px solid #ccc",
-        padding: 15,
-        marginTop: 20,
-        borderRadius: 6,
-        background: "#fafafa",
-      }}
-    >
-      <h3 style={{ marginBottom: 5 }}>{ds.original_filename}</h3>
-      <p style={{ marginTop: 0, color: "#666" }}>
-        Uploaded at: {new Date(ds.uploaded_at).toLocaleString()}
-      </p>
-
-      {loading && <p>Loading summary...</p>}
-      {!loading && summary && (
-        <>
-          <p>
-            <strong>Total Equipment:</strong> {summary.total_count}
+    <>
+      <div className="dataset-card">
+        <div className="dataset-header">
+          <h3 className="dataset-filename">{ds.original_filename}</h3>
+          <p className="dataset-timestamp">
+            {new Date(ds.uploaded_at).toLocaleString()}
           </p>
+        </div>
 
-          <div style={{ marginTop: 20 }}>
-            <h4>Type Distribution Chart</h4>
-            <ChartPanel summary={summary} />
-          </div>
+        {loading && <div className="loading-spinner">Loading summary...</div>}
 
-          <div style={{ marginTop: 10 }}>
-            <a
-              href={ds.pdf_report}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                textDecoration: "none",
-                color: "#0057e7",
-                fontWeight: "bold",
-              }}
-            >
-              📄 View PDF Report
-            </a>
-          </div>
+        {!loading && summary && (
+          <>
+            <div className="summary-stats">
+              <div className="stat-item">
+                <span className="stat-label">📦 Total Equipment:</span>
+                <span className="stat-value">{summary.total_count}</span>
+              </div>
 
-          <details
-            style={{
-              marginTop: 10,
-              cursor: "pointer",
-              padding: 6,
-              borderRadius: 4,
-              background: "#fff",
-            }}
-          >
-            <summary>Raw Summary JSON</summary>
-            <pre
-              style={{
-                background: "#eee",
-                padding: 10,
-                borderRadius: 6,
-                marginTop: 10,
-              }}
-            >
-              {JSON.stringify(summary, null, 2)}
-            </pre>
-          </details>
-        </>
+              {Object.entries(summary.averages || {}).map(
+                ([key, value]) =>
+                  value !== null && (
+                    <div key={key} className="stat-item">
+                      <span className="stat-label">Avg {key}:</span>
+                      <span className="stat-value">{value.toFixed(3)}</span>
+                    </div>
+                  )
+              )}
+            </div>
+
+            <div className="chart-section">
+              <h4 className="chart-title">Type Distribution</h4>
+              <ChartPanel summary={summary} />
+            </div>
+
+            <div className="actions-section">
+              <button
+                onClick={() => setShowPdfModal(true)}
+                className="pdf-button"
+              >
+                📄 View PDF Report
+              </button>
+
+              <details className="raw-json-details">
+                <summary className="json-summary">Show Raw Summary JSON</summary>
+                <pre className="json-content">
+                  {JSON.stringify(summary, null, 2)}
+                </pre>
+              </details>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* PDF Modal */}
+      {showPdfModal && (
+        <PdfModal
+          pdfUrl={ds.pdf_report}
+          fileName={ds.original_filename}
+          onClose={() => setShowPdfModal(false)}
+        />
       )}
+    </>
+  );
+}
+
+function PdfModal({ pdfUrl, fileName, onClose }) {
+  return (
+    <div className="pdf-modal-overlay" onClick={onClose}>
+      <div className="pdf-modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="pdf-modal-header">
+          <h2 className="pdf-modal-title">📄 {fileName}</h2>
+          <button className="pdf-modal-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div className="pdf-modal-content">
+          <iframe
+            src={pdfUrl}
+            title={fileName}
+            className="pdf-iframe"
+          ></iframe>
+        </div>
+
+        <div className="pdf-modal-footer">
+          <a
+            href={pdfUrl}
+            download
+            className="pdf-download-button"
+          >
+            ⬇️ Download PDF
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
